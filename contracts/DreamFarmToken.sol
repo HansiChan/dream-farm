@@ -861,9 +861,10 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     mapping (address => mapping (address => uint256)) private _allowances;
 
     mapping (address => bool) private _isExcludedFromFee;
+    mapping (address => bool) private _isExclude;
 
-    address public bnbPoolAddress;
-    address public devPoolAddress;
+    address public bnbPoolAddress = address(0xd9fA2349141049Cf6a8d66325471fe61233595b6);
+    address public devPoolAddress = address(0xECed424ce25647cB75F1440A6B5AA76cd542F379);
 
     uint256 private _tTotal = 10 * 10 ** 9 * 10 ** 9;
     uint256 private constant MAX = ~uint256(0);
@@ -882,13 +883,13 @@ contract DreamFarmToken is Context, IERC20, Ownable {
 
     bool inSwapAndLiquify;
     bool public swapAndLiquifyEnabled = true;
-    bool public presaleEnded = false;
+    bool public presaleEnded = true;
 
     uint256 public _maxTxAmount =  5 * 10**7 * 10**9;
     uint256 private numTokensToSwap =  5 * 10**5 * 10**9;
-    uint256 public swapCoolDownTime = 5;
+    uint256 public swapCoolDownTime = 20;
     // uint256 public swapCoolDownTimeForUser = 60;
-    uint256 private lastSwapTime;
+    uint256 public lastSwapTime = block.timestamp;
     mapping(address => uint256) private lastTxTimes;
 
     event SwapAndLiquifyEnabledUpdated(bool enabled);
@@ -899,11 +900,14 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     );
     event ExcludedFromFee(address account);
     event IncludedToFee(address account);
+    event Exluded(address account);
+    event Included(address account);
     event UpdateFees(uint256 bnbFee, uint256 liquidityFee);
     event UpdatedMaxTxAmount(uint256 maxTxAmount);
     event UpdateNumtokensToSwap(uint256 amount);
     event UpdateBNBPoolAddress(address account);
     event SwapAndCharged(uint256 token, uint256 liquidAmount, uint256 bnbPool,  uint256 bnbLiquidity);
+    event SwapBNB(uint256 balance);
     event UpdatedCoolDowntime(uint256 timeForContract);
     modifier lockTheSwap {
         inSwapAndLiquify = true;
@@ -1008,6 +1012,16 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         emit IncludedToFee(account);
     }
 
+    function exlude(address account) external onlyOwner {
+        _isExclude[account] = true;
+        emit Exluded(account);
+    }
+
+    function include(address account) external onlyOwner {
+        _isExclude[account] = false;
+        emit Included(account);
+    }
+
     function setFees(uint256 bnbFee, uint256 liquidityFee) external onlyOwner() {
         require(_BNBFee != bnbFee || _liquidityFee != liquidityFee);
         _BNBFee = bnbFee;
@@ -1076,6 +1090,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         require(from != address(0), "BEP20: transfer from the zero address");
         require(to != address(0), "BEP20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
+        require(!_isExclude[from], "Account has been banned");
         if (to == uniswapV2Pair && balanceOf(uniswapV2Pair) == 0) {
             require(presaleEnded == true, "You are not allowed to add liquidity before presale is ended");
         }
@@ -1108,7 +1123,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
             swapAndLiquifyEnabled &&
             block.timestamp >= lastSwapTime + swapCoolDownTime
         ) {
-            tokenBalance = numTokensToSwap;
+            // tokenBalance = numTokensToSwap;
             swapAndCharge(tokenBalance);
             lastSwapTime = block.timestamp;
         }
@@ -1129,22 +1144,23 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     }
 
     function swapAndCharge(uint256 tokenBalance) private lockTheSwap {
+
+        // uint256 liquidBalance = tokenBalance.mul(_liquidityFee).div(_liquidityFee + _BNBFee).div(2);
+        // tokenBalance = tokenBalance.sub(liquidBalance);
+        swapTokensForEth(tokenBalance);
         uint256 initialBalance = address(this).balance;
 
-        uint256 liquidBalance = tokenBalance.mul(_liquidityFee).div(_liquidityFee + _BNBFee).div(2);
-        tokenBalance = tokenBalance.sub(liquidBalance);
-        swapTokensForEth(tokenBalance);
+        // uint256 newBalance = address(this).balance.sub(initialBalance);
+        // uint256 bnbForLiquid = newBalance.mul(liquidBalance).div(tokenBalance);
+        // addLiquidity(liquidBalance, bnbForLiquid);
 
-        uint256 newBalance = address(this).balance.sub(initialBalance);
-        uint256 bnbForLiquid = newBalance.mul(liquidBalance).div(tokenBalance);
-        addLiquidity(liquidBalance, bnbForLiquid);
-
-        (bool success, ) = payable(bnbPoolAddress).call{value: address(this).balance.div(15).mul(10)}("");
-        (bool successs, ) = payable(devPoolAddress).call{value: address(this).balance.div(15).mul(5)}("");
+        (bool success, ) = payable(bnbPoolAddress).call{value: initialBalance.div(15).mul(10)}("");
+        (bool successs, ) = payable(devPoolAddress).call{value: initialBalance.div(15).mul(5)}("");
 
         require(success == true, "Transfer bnbPool failed.");
         require(successs == true, "Transfer devPool failed.");
-        emit SwapAndCharged(tokenBalance, liquidBalance, address(this).balance, bnbForLiquid);
+        // emit SwapAndCharged(tokenBalance, liquidBalance, address(this).balance, bnbForLiquid);
+        emit SwapBNB(address(this).balance);
     }
 
 
