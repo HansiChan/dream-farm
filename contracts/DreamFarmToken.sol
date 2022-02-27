@@ -857,11 +857,11 @@ interface IUniswapV2Factory {
 contract DreamFarmToken is Context, IERC20, Ownable {
     using SafeMath for uint256;
 
-    mapping (address => uint256) private _balances;
-    mapping (address => mapping (address => uint256)) private _allowances;
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
 
-    mapping (address => bool) private _isExcludedFromFee;
-    mapping (address => bool) private _isExclude;
+    mapping(address => bool) private _isExcludedFromFee;
+    mapping(address => bool) private _isExclude;
 
     address public bnbPoolAddress = address(0xd9fA2349141049Cf6a8d66325471fe61233595b6);
     address public devPoolAddress = address(0xECed424ce25647cB75F1440A6B5AA76cd542F379);
@@ -885,9 +885,10 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     bool public swapAndLiquifyEnabled = true;
     bool public presaleEnded = true;
 
-    uint256 public _maxTxAmount =  5 * 10**7 * 10**9;
-    uint256 private numTokensToSwap =  5 * 10**5 * 10**9;
+    uint256 public _maxTxAmount = 5 * 10 ** 7 * 10 ** 9;
+    uint256 private numTokensToSwap = 5 * 10 ** 5 * 10 ** 9;
     uint256 public swapCoolDownTime = 20;
+    uint256 public totalFee = 0;
     // uint256 public swapCoolDownTimeForUser = 60;
     uint256 public lastSwapTime = block.timestamp;
     mapping(address => uint256) private lastTxTimes;
@@ -906,7 +907,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     event UpdatedMaxTxAmount(uint256 maxTxAmount);
     event UpdateNumtokensToSwap(uint256 amount);
     event UpdateBNBPoolAddress(address account);
-    event SwapAndCharged(uint256 token, uint256 liquidAmount, uint256 bnbPool,  uint256 bnbLiquidity);
+    event SwapAndCharged(uint256 token, uint256 liquidAmount, uint256 bnbPool, uint256 bnbLiquidity);
     event SwapBNB(uint256 balance);
     event UpdatedCoolDowntime(uint256 timeForContract);
     modifier lockTheSwap {
@@ -989,15 +990,18 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         bnbPoolAddress = account;
         emit UpdateBNBPoolAddress(account);
     }
+
     function setDevPoolAddresss(address account) external onlyOwner {
         require(account != devPoolAddress, 'This address was already used');
         devPoolAddress = account;
     }
+
     function setCoolDownTime(uint256 timeForContract) external onlyOwner {
         require(swapCoolDownTime != timeForContract);
         swapCoolDownTime = timeForContract;
         emit UpdatedCoolDowntime(timeForContract);
     }
+
     function updatePresaleStatus(bool status) external onlyOwner {
         presaleEnded = status;
     }
@@ -1049,14 +1053,14 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     //to receive ETH from uniswapV2Router when swapping
     receive() external payable {}
 
-    function _getFeeValues(uint256 tAmount) private view returns (uint256) {
-        uint256 fee = tAmount.mul(_BNBFee + _liquidityFee).div(10**2);
+    function _getFeeValues(uint256 tAmount) private view returns (uint256, uint256) {
+        uint256 fee = tAmount.mul(_BNBFee + _liquidityFee).div(10 ** 2);
         uint256 tTransferAmount = tAmount.sub(fee);
-        return tTransferAmount;
+        return (tTransferAmount, fee);
     }
 
     function removeAllFee() private {
-        if(_BNBFee == 0 && _liquidityFee == 0) return;
+        if (_BNBFee == 0 && _liquidityFee == 0) return;
 
         _previousBNBFee = _BNBFee;
         _previousLiquidityFee = _liquidityFee;
@@ -1070,7 +1074,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         _liquidityFee = _previousLiquidityFee;
     }
 
-    function isExcludedFromFee(address account) external view returns(bool) {
+    function isExcludedFromFee(address account) external view returns (bool) {
         return _isExcludedFromFee[account];
     }
 
@@ -1094,7 +1098,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         if (to == uniswapV2Pair && balanceOf(uniswapV2Pair) == 0) {
             require(presaleEnded == true, "You are not allowed to add liquidity before presale is ended");
         }
-        if(
+        if (
             !_isExcludedFromFee[from] &&
         !_isExcludedFromFee[to] &&
         balanceOf(uniswapV2Pair) > 0 &&
@@ -1110,7 +1114,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         // also, don't get caught in a circular liquidity event.
         // also, don't swap & liquify if sender is uniswap pair.
         uint256 tokenBalance = balanceOf(address(this));
-        if(tokenBalance >= _maxTxAmount)
+        if (tokenBalance >= _maxTxAmount)
         {
             tokenBalance = _maxTxAmount;
         }
@@ -1135,12 +1139,12 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         }
 
         //if any account belongs to _isExcludedFromFee account then remove the fee
-        if (_isExcludedFromFee[from] || _isExcludedFromFee[to]){
+        if (_isExcludedFromFee[from] || _isExcludedFromFee[to]) {
             takeFee = false;
         }
 
         //transfer amount, it will take tax, burn, liquidity fee
-        _tokenTransfer(from,to,amount,takeFee);
+        _tokenTransfer(from, to, amount, takeFee);
     }
 
     function swapAndCharge(uint256 tokenBalance) private lockTheSwap {
@@ -1154,8 +1158,8 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         // uint256 bnbForLiquid = newBalance.mul(liquidBalance).div(tokenBalance);
         // addLiquidity(liquidBalance, bnbForLiquid);
 
-        (bool success, ) = payable(bnbPoolAddress).call{value: initialBalance.div(15).mul(10)}("");
-        (bool successs, ) = payable(devPoolAddress).call{value: initialBalance.div(15).mul(5)}("");
+        (bool success,) = payable(bnbPoolAddress).call{value : initialBalance.div(15).mul(10)}("");
+        (bool successs,) = payable(devPoolAddress).call{value : initialBalance.div(15).mul(5)}("");
 
         require(success == true, "Transfer bnbPool failed.");
         require(successs == true, "Transfer devPool failed.");
@@ -1187,7 +1191,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), tokenAmount);
 
         // add the liquidity
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(
+        uniswapV2Router.addLiquidityETH{value : ethAmount}(
             address(this),
             tokenAmount,
             0, // slippage is unavoidable
@@ -1199,15 +1203,16 @@ contract DreamFarmToken is Context, IERC20, Ownable {
 
     //this method is responsible for taking all fee, if takeFee is true
     function _tokenTransfer(address sender, address recipient, uint256 amount, bool takeFee) private {
-        if(!takeFee)
+        if (!takeFee)
             removeAllFee();
-        uint256 tTransferAmount = _getFeeValues(amount);
+        (uint256 tTransferAmount,uint256 fee) = _getFeeValues(amount);
         _balances[sender] = _balances[sender].sub(amount);
         _balances[recipient] = _balances[recipient].add(tTransferAmount);
-        _balances[address(this)] = _balances[address(this)].add(amount.sub(tTransferAmount));
+        _balances[address(this)] = _balances[address(this)].add(fee);
+        totalFee += fee;
         emit Transfer(sender, recipient, tTransferAmount);
 
-        if(!takeFee)
+        if (!takeFee)
             restoreAllFee();
     }
 }
