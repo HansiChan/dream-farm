@@ -831,8 +831,6 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
 
     uint public price;
 
-    uint public buy_limit_per_address = 4;
-
     uint public sell_begin_time = 0;
 
     constructor()
@@ -1052,7 +1050,6 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
 
         current_supply = supply;
         price = _price;
-        buy_limit_per_address = _limit;
         sell_begin_time = _time;
     }
 
@@ -1085,7 +1082,6 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
 
     function buy(uint amount, uint adv_time) public payable {
         require(block.timestamp >= SafeMath.sub(sell_begin_time, adv_time), "Purchase_Not_Enabled");
-        require(SafeMath.add(balanceOf(msg.sender), amount) <= buy_limit_per_address, "Exceed_Purchase_Limit");
         uint256 requiredValue = SafeMath.mul(amount, price);
         require(msg.value >= requiredValue, "Not_Enough_Payment");
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
