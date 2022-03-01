@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
+
 pragma experimental ABIEncoderV2;
-
-abstract contract ISaleContract {
-    function sale(uint256 tokenId, uint256[] memory _settings, address[] memory _addrs) public virtual;
-
-    function offload(uint256 tokenId) public virtual;
-}
 
     struct TokenMeta {
         uint256 id;
@@ -23,8 +18,6 @@ abstract contract INft {
     function tokenMeta(uint256 _tokenId) public virtual view returns (TokenMeta memory);
 
     function setTokenAsset(uint256 _tokenId, string memory _uri, string memory _hash, address _minter) public virtual;
-
-    function increaseSoldTimes(uint256 _tokenId) public virtual;
 
     function getSoldTimes(uint256 _tokenId) public virtual view returns (uint256);
 }
@@ -798,7 +791,19 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownable {
+contract token {
+    function transferFrom(address sender, address receiver, uint amount) public returns (bool){
+        sender;
+        receiver;
+        amount;
+    }
+
+    function balanceOf(address account) public view returns (uint256) {
+        account;
+    }
+}
+
+contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC721Receiver, Ownable {
     using Address for address;
     using Strings for uint256;
     using Counters for Counters.Counter;
@@ -806,8 +811,8 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
 
     mapping(uint256 => TokenMeta) public tokenOnChainMeta;
 
-    uint256 public current_supply = 0;
-    uint256 public MAX_SUPPLY =  ~uint256(0);
+    uint256 public current_supply = 10000;
+    uint256 public MAX_SUPPLY = ~uint256(0);
     uint256 public current_sold = 0;
     string public baseURL;
 
@@ -829,15 +834,18 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
     // Mapping from owner to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
-    uint public price;
+    mapping(uint256 => address) private _onSaleList;
 
-    uint public sell_begin_time = 0;
+    uint256 public price;
+
+    token public drfToken;
 
     constructor()
     {
         _name = "Dream Farm Fish";
         _symbol = "DFF";
         setBaseURL("https://www.dreamfarm.io/fish/token/");
+        drfToken = token(0x210ecdfB4c8927a0EC99c8909dD247F84423D772);
     }
 
     function setBaseURL(string memory _newBaseURL) public onlyOwner {
@@ -1000,7 +1008,6 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         uint256 tokenId
     ) internal {
         require(ownerOf(tokenId) == from, "ERC721: transfer of token that is not own");
-        require(to != address(0), "ERC721: transfer to the zero address");
 
         // Clear approvals from the previous owner
         _approve(address(0), tokenId);
@@ -1044,13 +1051,12 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         return tokenOnChainMeta[_tokenId];
     }
 
-    function mintAndPricing(uint256 _num, uint256 _price, uint256 _limit, uint256 _time) public onlyOwner {
+    function setCurrentSupplyAndPrice(uint256 _num,uint256 _price) public onlyOwner {
         uint supply = SafeMath.add(current_supply, _num);
         require(supply <= MAX_SUPPLY, "CAN_NOT_EXCEED_MAX_SUPPLY");
 
-        current_supply = supply;
         price = _price;
-        sell_begin_time = _time;
+        current_supply = supply;
     }
 
     function setTokenAsset(uint256 _tokenId, string memory _uri, string memory _hash, address _minter) public override onlyOwner {
@@ -1062,17 +1068,29 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         tokenOnChainMeta[_tokenId] = meta;
     }
 
-    function setSale(uint256 _tokenId, address _contractAddr, uint256[] memory _settings, address[] memory _addrs) public {
+    function setSale(uint256 _tokenId) public {
         require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
         address sender = _msgSender();
         require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
 
-        ISaleContract _contract = ISaleContract(_contractAddr);
-        _contract.sale(_tokenId, _settings, _addrs);
-        _transfer(sender, _contractAddr, _tokenId);
+        _transfer(sender, address(this), _tokenId);
+        _onSaleList[_tokenId] = sender;
     }
 
-    function increaseSoldTimes(uint256 /* _tokenId */) public override {
+    function offload(uint256 _tokenId, address receiver) public {
+        require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
+        address sender = _msgSender();
+        require(_onSaleList[_tokenId] == sender || owner() == sender, "Invalid_Owner");
+
+        _transfer(address(this), receiver, _tokenId);
+    }
+
+    function upgrade(uint256[15] calldata _tokenIdList, address receiver) public {
+        for (uint i = 0; i < 15; ++i) {
+            _transfer(receiver, address(0), _tokenIdList[i]);
+        }
+        uint256 newItemId = SafeMath.sub(MAX_SUPPLY, _tokenIds.current());
+        _mint(receiver, newItemId, true);
     }
 
     function getSoldTimes(uint256 _tokenId) public override view returns (uint256) {
@@ -1080,16 +1098,17 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         return meta.soldTimes;
     }
 
-    function buy(uint amount, uint adv_time) public payable {
-        require(block.timestamp >= SafeMath.sub(sell_begin_time, adv_time), "Purchase_Not_Enabled");
-        uint256 requiredValue = SafeMath.mul(amount, price);
-        require(msg.value >= requiredValue, "Not_Enough_Payment");
+    function buy(address to, uint amount, uint256 price) public {
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
+        uint256 requiredValue = SafeMath.mul(amount, price);
+        require(drfToken.balanceOf(msg.sender) >= requiredValue, "Not_Enough_Payment");
+        bool trans = drfToken.transferFrom(msg.sender, address(0x210ecdfB4c8927a0EC99c8909dD247F84423D772), requiredValue);
+        require(trans, "TRANS_DRF_FAILED");
 
         for (uint i = 0; i < amount; ++i) {
             uint256 newItemId = SafeMath.sub(MAX_SUPPLY, _tokenIds.current());
             _tokenIds.increment();
-            _mint(msg.sender, newItemId, true);
+            _mint(to, newItemId, true);
 
             TokenMeta memory meta = TokenMeta(
                 newItemId,
@@ -1103,6 +1122,15 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         }
 
         current_sold = SafeMath.add(current_sold, amount);
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     function withdraw() public onlyOwner {

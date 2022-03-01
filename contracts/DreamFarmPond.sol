@@ -798,7 +798,7 @@ interface IERC721Metadata is IERC721 {
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }
 
-contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, Ownable {
+contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC721Receiver, Ownable {
     using Address for address;
     using Strings for uint256;
     using Counters for Counters.Counter;
@@ -829,7 +829,9 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
     // Mapping from owner to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
-    uint public price;
+    mapping(uint256 => address) private _onSaleList;
+
+    uint256 public price;
 
     uint public buy_limit_per_address = 4;
 
@@ -1107,6 +1109,32 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, Ownab
         }
 
         current_sold = SafeMath.add(current_sold, amount);
+    }
+
+    function setSale(uint256 _tokenId) public {
+        require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
+        address sender = _msgSender();
+        require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
+
+        _transfer(sender, address(this), _tokenId);
+        _onSaleList[_tokenId] = sender;
+    }
+
+    function offload(uint256 _tokenId, address receiver) public {
+        require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
+        address sender = _msgSender();
+        require(_onSaleList[_tokenId] == sender || owner() == sender, "Invalid_Owner");
+
+        _transfer(address(this), receiver, _tokenId);
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     function withdraw() public onlyOwner {
