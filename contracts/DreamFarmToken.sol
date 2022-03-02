@@ -869,7 +869,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     uint256 private _tTotal = 10 * 10 ** 9 * 10 ** 9;
     uint256 private constant MAX = ~uint256(0);
     string private _name = "Dream Farm";
-    string private _symbol = "DFR";
+    string private _symbol = "DRF";
     uint8 private _decimals = 9;
 
     uint256 public _BNBFee = 15;
