@@ -1080,7 +1080,7 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
     function offload(uint256 _tokenId, address receiver) public {
         require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
         address sender = _msgSender();
-        require(_onSaleList[_tokenId] == sender || owner() == sender, "Invalid_Owner");
+        require(owner() == sender, "Invalid_Owner");
 
         _transfer(address(this), receiver, _tokenId);
     }
@@ -1090,6 +1090,7 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
             _transfer(receiver, address(0), _tokenIdList[i]);
         }
         uint256 newItemId = SafeMath.sub(MAX_SUPPLY, _tokenIds.current());
+        _tokenIds.increment();
         _mint(receiver, newItemId, true);
     }
 

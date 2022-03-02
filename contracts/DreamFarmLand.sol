@@ -807,7 +807,7 @@ contract DreamFarmLand is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
     mapping (uint256 => TokenMeta) public tokenOnChainMeta;
 
     uint256 public current_supply = 0;
-    uint256 public MAX_SUPPLY = 10000;
+    uint256 public MAX_SUPPLY = 10000000;
     uint256 public current_sold = 0;
     string public baseURL;
 
@@ -831,7 +831,7 @@ contract DreamFarmLand is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => address) private _onSaleList;
 
-    uint256 public price;
+    uint public price;
 
     uint public buy_limit_per_address = 4;
 
@@ -1067,16 +1067,6 @@ contract DreamFarmLand is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         tokenOnChainMeta[_tokenId] = meta;
     }
 
-    function setSale(uint256 _tokenId, address _contractAddr, uint256[] memory _settings, address[] memory _addrs) public {
-        require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
-        address sender = _msgSender();
-        require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
-
-        ISaleContract _contract = ISaleContract(_contractAddr);
-        _contract.sale(_tokenId, _settings, _addrs);
-        _transfer(sender, _contractAddr, _tokenId);
-    }
-
     function increaseSoldTimes(uint256 /* _tokenId */) public override {
     }
 
@@ -1088,7 +1078,7 @@ contract DreamFarmLand is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
     function buy(uint amount, uint adv_time) public payable {
         require(block.timestamp >= SafeMath.sub(sell_begin_time, adv_time), "Purchase_Not_Enabled");
         require(SafeMath.add(balanceOf(msg.sender), amount) <= buy_limit_per_address, "Exceed_Purchase_Limit");
-        uint256 requiredValue = SafeMath.mul(amount, price);
+        uint requiredValue = SafeMath.mul(amount, price);
         require(msg.value >= requiredValue, "Not_Enough_Payment");
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
 

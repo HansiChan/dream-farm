@@ -807,7 +807,7 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
     mapping(uint256 => TokenMeta) public tokenOnChainMeta;
 
     uint256 public current_supply = 0;
-    uint256 public MAX_SUPPLY = 10000;
+    uint256 public MAX_SUPPLY = 10000000;
     uint256 public current_sold = 0;
     string public baseURL;
 
@@ -831,7 +831,7 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => address) private _onSaleList;
 
-    uint256 public price;
+    uint public price;
 
     uint public buy_limit_per_address = 4;
 
@@ -1065,16 +1065,6 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         meta.hash = _hash;
         meta.minter = _minter;
         tokenOnChainMeta[_tokenId] = meta;
-    }
-
-    function setSale(uint256 _tokenId, address _contractAddr, uint256[] memory _settings, address[] memory _addrs) public {
-        require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
-        address sender = _msgSender();
-        require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
-
-        ISaleContract _contract = ISaleContract(_contractAddr);
-        _contract.sale(_tokenId, _settings, _addrs);
-        _transfer(sender, _contractAddr, _tokenId);
     }
 
     function increaseSoldTimes(uint256 /* _tokenId */) public override {
