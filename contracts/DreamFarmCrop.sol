@@ -1100,7 +1100,6 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
     }
 
     function buy(uint amount, uint adv_time) public payable {
-        require(block.timestamp >= SafeMath.sub(sell_begin_time, adv_time), "Purchase_Not_Enabled");
         uint requiredValue = SafeMath.mul(amount, price);
         require(msg.value >= requiredValue, "Not_Enough_Payment");
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
