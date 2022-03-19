@@ -868,8 +868,8 @@ contract DreamFarmToken is Context, IERC20, Ownable {
 
     uint256 private _tTotal = 10 * 10 ** 9 * 10 ** 9;
     uint256 private constant MAX = ~uint256(0);
-    string private _name = "Dream Farm";
-    string private _symbol = "DRF";
+    string private _name = "Dream Farm Token";
+    string private _symbol = "DFR";
     uint8 private _decimals = 9;
 
     uint256 public _BNBFee = 15;
@@ -885,10 +885,11 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     bool public swapAndLiquifyEnabled = true;
     bool public presaleEnded = true;
 
-    uint256 public _maxTxAmount = 5 * 10 ** 7 * 10 ** 9;
+    uint256 public _maxTxAmount = 10 * 10 ** 9 * 10 ** 9;
     uint256 private numTokensToSwap = 5 * 10 ** 5 * 10 ** 9;
     uint256 public swapCoolDownTime = 20;
     uint256 public totalFee = 0;
+    uint256 public totalBnb = 0;
     // uint256 public swapCoolDownTimeForUser = 60;
     uint256 public lastSwapTime = block.timestamp;
     mapping(address => uint256) private lastTxTimes;
@@ -1153,6 +1154,7 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         // tokenBalance = tokenBalance.sub(liquidBalance);
         swapTokensForEth(tokenBalance);
         uint256 initialBalance = address(this).balance;
+        totalBnb += initialBalance;
 
         // uint256 newBalance = address(this).balance.sub(initialBalance);
         // uint256 bnbForLiquid = newBalance.mul(liquidBalance).div(tokenBalance);

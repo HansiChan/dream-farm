@@ -1003,8 +1003,7 @@ contract DreamFarmLand is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         address to,
         uint256 tokenId
     ) internal {
-        require(ownerOf(tokenId) == from, "ERC721: transfer of token that is not own");
-        require(to != address(0), "ERC721: transfer to the zero address");
+        require(ownerOf(tokenId) == from || ownerOf(tokenId) == address(this), "ERC721: transfer of token that is not own");
 
         // Clear approvals from the previous owner
         _approve(address(0), tokenId);

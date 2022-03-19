@@ -927,7 +927,7 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         uint256 tokenId
     ) public override {
         //solhint-disable-next-line max-line-length
-        require(_isApprovedOrOwner(_msgSender(), tokenId), "ERC721: transfer caller is not owner nor approved");
+        require(ownerOf(tokenId) == from || ownerOf(tokenId) == address(this), "ERC721: transfer of token that is not own");
 
         _transfer(from, to, tokenId);
     }

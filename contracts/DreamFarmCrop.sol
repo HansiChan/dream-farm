@@ -845,7 +845,7 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         _name = "Dream Farm Crop";
         _symbol = "DFC";
         setBaseURL("https://www.dreamfarm.io/crop/token/");
-        drfToken = token(0x210ecdfB4c8927a0EC99c8909dD247F84423D772);
+        drfToken = token(0xee257C331C85f9d6acCb47167a4B95E33FD05793);
     }
 
     function setBaseURL(string memory _newBaseURL) public onlyOwner {
@@ -1007,7 +1007,7 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         address to,
         uint256 tokenId
     ) internal {
-        require(ownerOf(tokenId) == from, "ERC721: transfer of token that is not own");
+        require(ownerOf(tokenId) == from || ownerOf(tokenId) == address(this), "ERC721: transfer of token that is not own");
 
         // Clear approvals from the previous owner
         _approve(address(0), tokenId);
@@ -1099,17 +1099,16 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         return meta.soldTimes;
     }
 
-    function buy(address to, uint amount, uint256 price) public {
+    function buy(uint amount, uint adv_time) public payable {
+        require(block.timestamp >= SafeMath.sub(sell_begin_time, adv_time), "Purchase_Not_Enabled");
+        uint requiredValue = SafeMath.mul(amount, price);
+        require(msg.value >= requiredValue, "Not_Enough_Payment");
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
-        uint256 requiredValue = SafeMath.mul(amount, price);
-        require(drfToken.balanceOf(msg.sender) >= requiredValue, "Not_Enough_Payment");
-        bool trans = drfToken.transferFrom(msg.sender, address(0x210ecdfB4c8927a0EC99c8909dD247F84423D772), requiredValue);
-        require(trans, "TRANS_DRF_FAILED");
 
         for (uint i = 0; i < amount; ++i) {
             uint256 newItemId = SafeMath.sub(MAX_SUPPLY, _tokenIds.current());
             _tokenIds.increment();
-            _mint(to, newItemId, true);
+            _mint(msg.sender, newItemId, true);
 
             TokenMeta memory meta = TokenMeta(
                 newItemId,

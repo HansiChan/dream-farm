@@ -44,6 +44,7 @@ async function main() {
         "name": "breedData",
         "type": "tuple"
     }
+    await web3Provider.getTransactionCount(address,"latest").then(r => console.log("---------nonce:"+r));
 
     const breed = {
         owner: '0xDB193F3a78AaC74A77f2fEE96Db210C88a9c2438',
