@@ -837,6 +837,11 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     uint public sell_begin_time = 0;
 
+    //owner of tokenIds
+    mapping(address => uint256[]) internal ownerTokens;
+    mapping(uint256 => uint256) internal tokenIndexs;
+    mapping(uint256 => address) internal tokenOwners;
+
     constructor()
     {
         _name = "DreamFarmPond";
@@ -1108,6 +1113,12 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
         _transfer(sender, address(this), _tokenId);
         _onSaleList[_tokenId] = sender;
+
+        //record tokenIds
+        uint256[] storage tokens = ownerTokens[sender];
+        tokenIndexs[_tokenId] = tokens.length;
+        tokens.push(_tokenId);
+        tokenOwners[_tokenId] = sender;
     }
 
     function offload(uint256 _tokenId, address receiver) public {
@@ -1116,6 +1127,22 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         require(_onSaleList[_tokenId] == sender || owner() == sender, "Invalid_Owner");
 
         _transfer(address(this), receiver, _tokenId);
+
+        //remove tokenIds
+        uint256 index = tokenIndexs[_tokenId];
+        uint256[] storage tokens = ownerTokens[receiver];
+        uint256 indexLast = tokens.length - 1;
+
+        uint256 tokenIdLast = tokens[indexLast];
+        tokens[index] = tokenIdLast;
+        tokenIndexs[tokenIdLast] = index;
+        tokens.pop();
+
+        delete tokenOwners[_tokenId];
+    }
+
+    function onSaleTokenList(address _add) public view returns(uint256[] memory) {
+        return ownerTokens[_add];
     }
 
     function onERC721Received(
