@@ -836,9 +836,9 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => address) private _onSaleList;
 
-    uint256 public price;
+    uint public price = 0.01 * 10 ** 18;
 
-    token public drfToken;
+    uint256 public totalSales = 0;
 
     //owner of tokenIds
     mapping(address => uint256[]) internal ownerTokens;
@@ -850,7 +850,6 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         _name = "Dream Farm Fish";
         _symbol = "DFF";
         setBaseURL("https://www.dreamfarm.io/fish/token/");
-        drfToken = token(0xee257C331C85f9d6acCb47167a4B95E33FD05793);
     }
 
     function setBaseURL(string memory _newBaseURL) public onlyOwner {
@@ -1143,12 +1142,15 @@ contract DreamFarmFish is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
             tokenOnChainMeta[newItemId] = meta;
         }
 
+        totalSales += requiredValue;
+
         current_sold = SafeMath.add(current_sold, amount);
     }
 
     function onSaleTokenList(address _add) public view returns(uint256[] memory) {
         return ownerTokens[_add];
     }
+
 
     function onERC721Received(
         address,

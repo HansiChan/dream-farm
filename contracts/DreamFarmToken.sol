@@ -908,8 +908,8 @@ contract DreamFarmToken is Context, IERC20, Ownable {
     event UpdatedMaxTxAmount(uint256 maxTxAmount);
     event UpdateNumtokensToSwap(uint256 amount);
     event UpdateBNBPoolAddress(address account);
-    event SwapAndCharged(uint256 token, uint256 liquidAmount, uint256 bnbPool, uint256 bnbLiquidity);
-    event SwapBNB(uint256 balance);
+    event SwapAndCharged(uint256 token, uint256 bnb, uint256 bnbPool, uint256 devPool);
+    // event SwapBNB(uint256 balance);
     event UpdatedCoolDowntime(uint256 timeForContract);
     modifier lockTheSwap {
         inSwapAndLiquify = true;
@@ -1159,14 +1159,16 @@ contract DreamFarmToken is Context, IERC20, Ownable {
         // uint256 newBalance = address(this).balance.sub(initialBalance);
         // uint256 bnbForLiquid = newBalance.mul(liquidBalance).div(tokenBalance);
         // addLiquidity(liquidBalance, bnbForLiquid);
+        uint256 bnbPoolValue = initialBalance.div(15).mul(10);
+        uint256 devPoolValue = initialBalance.div(15).mul(5);
 
-        (bool success,) = payable(bnbPoolAddress).call{value : initialBalance.div(15).mul(10)}("");
-        (bool successs,) = payable(devPoolAddress).call{value : initialBalance.div(15).mul(5)}("");
+        (bool success,) = payable(bnbPoolAddress).call{value : bnbPoolValue}("");
+        (bool successs,) = payable(devPoolAddress).call{value : devPoolValue}("");
 
         require(success == true, "Transfer bnbPool failed.");
         require(successs == true, "Transfer devPool failed.");
-        // emit SwapAndCharged(tokenBalance, liquidBalance, address(this).balance, bnbForLiquid);
-        emit SwapBNB(address(this).balance);
+        emit SwapAndCharged(tokenBalance, initialBalance, bnbPoolValue, devPoolValue);
+        // emit SwapBNB(address(this).balance);
     }
 
 

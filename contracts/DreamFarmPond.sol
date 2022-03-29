@@ -831,11 +831,11 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => address) private _onSaleList;
 
-    uint public price;
+    uint public price = 0.01 * 10 ** 18;
 
     uint public buy_limit_per_address = 4;
 
-    uint public sell_begin_time = 0;
+    uint public sell_begin_time = block.timestamp;
 
     //owner of tokenIds
     mapping(address => uint256[]) internal ownerTokens;
