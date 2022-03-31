@@ -840,10 +840,7 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     uint256 public totalSales = 0;
 
-    //owner of tokenIds
-    mapping(address => uint256[]) internal ownerTokens;
-    mapping(uint256 => uint256) internal tokenIndexs;
-    mapping(uint256 => address) internal tokenOwners;
+    mapping(uint256 => uint256) private _tokenFreeze;
 
     constructor()
     {
@@ -1072,19 +1069,18 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         tokenOnChainMeta[_tokenId] = meta;
     }
 
-    function setSale(uint256 _tokenId) public {
+    function setSale(uint256 _tokenId,uint setType) public {
         require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
         address sender = _msgSender();
         require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
 
-        _transfer(sender, address(this), _tokenId);
-        _onSaleList[_tokenId] = sender;
+        if (setType == 1) {
+            _tokenFreeze[_tokenId] = 1;
+        } else if (setType == 2) {
+            _tokenFreeze[_tokenId] = 2;
+        }
 
-        //record tokenIds
-        uint256[] storage tokens = ownerTokens[sender];
-        tokenIndexs[_tokenId] = tokens.length;
-        tokens.push(_tokenId);
-        tokenOwners[_tokenId] = sender;
+        _transfer(sender, address(this), _tokenId);
     }
 
     function offload(uint256 _tokenId, address receiver) public {
@@ -1092,19 +1088,13 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         address sender = _msgSender();
         require(owner() == sender, "Invalid_Owner");
 
+        _tokenFreeze[_tokenId] = 0;
+
         _transfer(address(this), receiver, _tokenId);
+    }
 
-        //remove tokenIds
-        uint256 index = tokenIndexs[_tokenId];
-        uint256[] storage tokens = ownerTokens[receiver];
-        uint256 indexLast = tokens.length - 1;
-
-        uint256 tokenIdLast = tokens[indexLast];
-        tokens[index] = tokenIdLast;
-        tokenIndexs[tokenIdLast] = index;
-        tokens.pop();
-
-        delete tokenOwners[_tokenId];
+    function tokenState(uint256 tokenId) public view returns(uint) {
+        return _tokenFreeze[tokenId];
     }
 
     function upgrade(uint256[15] calldata _tokenIdList, address receiver) public {
@@ -1131,6 +1121,8 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
             _tokenIds.increment();
             _mint(msg.sender, newItemId, true);
 
+            _tokenFreeze[newItemId] = 0;
+
             TokenMeta memory meta = TokenMeta(
                 newItemId,
                 "",
@@ -1145,10 +1137,6 @@ contract DreamFarmCrop is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         totalSales += requiredValue;
 
         current_sold = SafeMath.add(current_sold, amount);
-    }
-
-    function onSaleTokenList(address _add) public view returns(uint256[] memory) {
-        return ownerTokens[_add];
     }
 
     function onERC721Received(

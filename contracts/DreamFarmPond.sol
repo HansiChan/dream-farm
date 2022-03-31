@@ -806,7 +806,7 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => TokenMeta) public tokenOnChainMeta;
 
-    uint256 public current_supply = 0;
+    uint256 public current_supply = 2500000;
     uint256 public MAX_SUPPLY = 10000000;
     uint256 public current_sold = 0;
     string public baseURL;
@@ -831,16 +831,13 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
 
     mapping(uint256 => address) private _onSaleList;
 
-    uint public price = 0.01 * 10 ** 18;
+    uint public price = 0.15 * 10 ** 18;
 
     uint public buy_limit_per_address = 4;
 
     uint public sell_begin_time = block.timestamp;
 
-    //owner of tokenIds
-    mapping(address => uint256[]) internal ownerTokens;
-    mapping(uint256 => uint256) internal tokenIndexs;
-    mapping(uint256 => address) internal tokenOwners;
+    mapping(uint256 => uint256) private _tokenFreeze;
 
     constructor()
     {
@@ -1087,10 +1084,13 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         require(msg.value >= requiredValue, "Not_Enough_Payment");
         require(current_supply >= SafeMath.add(current_sold, amount), "Not_Enough_Stock");
 
+
         for (uint i = 0; i < amount; ++i) {
             uint256 newItemId = SafeMath.sub(MAX_SUPPLY, _tokenIds.current());
             _tokenIds.increment();
             _mint(msg.sender, newItemId, true);
+
+            _tokenFreeze[newItemId] = 0;
 
             TokenMeta memory meta = TokenMeta(
                 newItemId,
@@ -1106,19 +1106,20 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         current_sold = SafeMath.add(current_sold, amount);
     }
 
-    function setSale(uint256 _tokenId) public {
+    function setSale(uint256 _tokenId,uint setType) public {
         require(_exists(_tokenId), "Vsnft_setTokenAsset_notoken");
         address sender = _msgSender();
         require(owner() == sender || ownerOf(_tokenId) == sender, "Invalid_Owner");
+        require(setType == 1 || setType == 2,"Unknow_setType");
+
+        if (setType == 1) {
+            _tokenFreeze[_tokenId] = 1;
+        } else if (setType == 2) {
+            _tokenFreeze[_tokenId] = 2;
+        }
 
         _transfer(sender, address(this), _tokenId);
         _onSaleList[_tokenId] = sender;
-
-        //record tokenIds
-        uint256[] storage tokens = ownerTokens[sender];
-        tokenIndexs[_tokenId] = tokens.length;
-        tokens.push(_tokenId);
-        tokenOwners[_tokenId] = sender;
     }
 
     function offload(uint256 _tokenId, address receiver) public {
@@ -1126,23 +1127,13 @@ contract DreamFarmPond is INft, Context, ERC165, IERC721, IERC721Metadata, IERC7
         address sender = _msgSender();
         require(_onSaleList[_tokenId] == sender || owner() == sender, "Invalid_Owner");
 
+        _tokenFreeze[_tokenId] = 0;
+
         _transfer(address(this), receiver, _tokenId);
-
-        //remove tokenIds
-        uint256 index = tokenIndexs[_tokenId];
-        uint256[] storage tokens = ownerTokens[receiver];
-        uint256 indexLast = tokens.length - 1;
-
-        uint256 tokenIdLast = tokens[indexLast];
-        tokens[index] = tokenIdLast;
-        tokenIndexs[tokenIdLast] = index;
-        tokens.pop();
-
-        delete tokenOwners[_tokenId];
     }
 
-    function onSaleTokenList(address _add) public view returns(uint256[] memory) {
-        return ownerTokens[_add];
+    function tokenState(uint256 tokenId) public view returns(uint) {
+        return _tokenFreeze[tokenId];
     }
 
     function onERC721Received(
